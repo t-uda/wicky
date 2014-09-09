@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20140827192553) do
+ActiveRecord::Schema.define(version: 20140909120700) do
 
   create_table "participations", id: false, force: true do |t|
     t.integer "user_id",    null: false
@@ -22,14 +22,24 @@ ActiveRecord::Schema.define(version: 20140827192553) do
   add_index "participations", ["project_id"], name: "index_participations_on_project_id"
   add_index "participations", ["user_id"], name: "index_participations_on_user_id"
 
+  create_table "patches", force: true do |t|
+    t.text     "content"
+    t.integer  "histories_id"
+    t.string   "histories_type"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+  end
+
   create_table "projects", force: true do |t|
     t.string   "name"
     t.datetime "created_at"
     t.datetime "updated_at"
     t.integer  "schedules_id"
     t.text     "summary"
+    t.integer  "histories_id"
   end
 
+  add_index "projects", ["histories_id"], name: "index_projects_on_histories_id"
   add_index "projects", ["schedules_id"], name: "index_projects_on_schedules_id"
 
   create_table "schedules", force: true do |t|
@@ -41,7 +51,10 @@ ActiveRecord::Schema.define(version: 20140827192553) do
     t.datetime "created_at"
     t.datetime "updated_at"
     t.text     "description"
+    t.integer  "histories_id"
   end
+
+  add_index "schedules", ["histories_id"], name: "index_schedules_on_histories_id"
 
   create_table "users", force: true do |t|
     t.string "name"
