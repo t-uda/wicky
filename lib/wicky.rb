@@ -13,7 +13,9 @@ require_relative '../models/user'
 require_relative '../models/project'
 require_relative '../models/participation'
 require_relative '../models/schedule'
+require_relative '../models/patch'
 require_relative './haml/filters/kramdown'
+require_relative './difftool'
 
 module Wicky
   class App < Sinatra::Base
@@ -56,6 +58,18 @@ module Wicky
           haml_tag 'div.ui-bind', { 'data-bind-id' => id, 'data-bind-update-api' => api }, &block
         end
       end
+
+      def merge_schedule_description!(schedule, your_original, your_description)
+        my_description = schedule.description
+        new_description = Wicky::DiffTool::merge3 my_description, your_original, your_description do |rej|
+          return { is_conflicted: true, description: rej }
+        end
+        diff = Wicky::DiffTool::diff my_description, new_description
+        schedule.patches << Patch.create(content: diff)
+        schedule.description = new_description
+        schedule.save!
+        return { is_conflicted: false, description: new_description }
+      end
     end
 
     get '/' do
@@ -76,7 +90,8 @@ module Wicky
     get '/projects/:id/' do |id|
       halt 404 unless Project.exists?(id)
       haml :a_project, locals: {
-        project: Project.find(id)
+        project: Project.find(id),
+        is_conflicted: false
       }
     end
 
@@ -91,13 +106,27 @@ module Wicky
     end
 
     get '/projects/:id/!show' do |id|
+      param :is_conflicted, Boolean, required: true
+      param :summary, String
       halt 404 unless Project.exists?(id)
-      haml :projects, { layout: false }, { project: Project.find(id) }
+      locals = {
+        project: Project.find(id),
+        is_conflicted: params[:is_conflicted]
+      }
+      locals[:conflicted_summary] = params[:summary] if params[:is_conflicted]
+      haml :a_project, { layout: false }, locals
     end
 
     get '/schedules/:id/!show' do |id|
+      param :is_conflicted, Boolean, required: true
+      param :description, String
       halt 404 unless Schedule.exists?(id)
-      haml :a_schedule, { layout: false }, { schedule: Schedule.find(id) }
+      locals = {
+        schedule: Schedule.find(id),
+        is_conflicted: params[:is_conflicted]
+      }
+      locals[:conflicted_description] = params[:description] if params[:is_conflicted]
+      haml :a_schedule, { layout: false }, locals
     end
 
     get '/api/projects/:id.json' do |id|
@@ -120,6 +149,22 @@ module Wicky
         summary: params[:summary]
       }
       json Project.update(id, project_data).to_json
+    end
+
+    put '/api/projects/:id/summary' do |id|
+      halt 404 unless Project.exists?(id)
+      project = Project.find id
+      your_original = params[:original]
+      your_summary = params[:summary]
+      my_summary = project.summary
+      new_summary = Wicky::DiffTool::merge3 my_summary, your_original, your_summary do |rej|
+        return json(is_conflicted: true, summary: rej)
+      end
+      diff = Wicky::DiffTool::diff my_summary, new_summary
+      project.patches << Patch.create(content: diff)
+      project.summary = new_summary
+      project.save!
+      return json(is_conflicted: false, summary: project.summary)
     end
 
     get '/api/users.json' do
@@ -190,10 +235,19 @@ module Wicky
         place: params[:place],
         start: time_for(params[:start]),
         end: time_for(params[:end]),
-        description: params[:description],
         project_id: project_id
       }
-      json Schedule.update(id, schedule_data).to_json
+      schedule = Schedule.update(id, schedule_data)
+      result = merge_schedule_description! schedule, params[:original], params[:description]
+      result[:schedule] = schedule
+      return json(result)
+    end
+
+    put '/api/schedules/:id/description' do |id|
+      halt 404 unless Schedule.exists?(id)
+      schedule = Schedule.find id
+      result = merge_schedule_description! schedule, params[:original], params[:description]
+      return json(result)
     end
 
     get '/api/kramdown' do

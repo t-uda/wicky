@@ -41,19 +41,18 @@ wicky.projects = {};
 			}
 			ev.preventDefault();
 			binder = ui.binder(form.data('binder'));
-			if (form.is('form.modify-summary')) {
-				/**
-				 * TODO: '/projects/:id/!show' を実装して summary だけでなく name も置き換えるように
-				 */
-				jQuery.extend(config, {
-					data: {
-						md: form.find('textarea[name="summary"]').val()
-					}
+			if (form.is('form.modify-summary') || form.is('form.modify-schedule')) {
+				jQuery.post(form.attr('action'), form.serialize()).done(function (result) {
+					jQuery.extend(config, {
+						data: result
+					});
+					binder.update(config);
+				});
+			} else {
+				jQuery.post(form.attr('action'), form.serialize()).done(function () {
+					binder.update(config);
 				});
 			}
-			jQuery.post(form.attr('action'), form.serialize()).done(function () {
-				binder.update(config);
-			});
 			return false;
 		});
 	}

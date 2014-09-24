@@ -6,13 +6,15 @@
       != bind 'project-summary', url('/api/kramdown') do
         :kramdown
           #{project.summary}
-      %form.modify-summary{ action: url("/api/projects/#{project.id}"), method: :post, 'data-binder' => 'project' }
+      - if is_conflicted
+        %div.alert-danger
+          Conflicted!
+      %form.modify-summary{ action: url("/api/projects/#{project.id}/summary"), method: :post, 'data-binder' => 'project' }
         %p
           %input{ type: :hidden, name: :_method, value: :put }
-          %input{ type: :hidden, name: :name, value: project.name }
+          %input{ type: :hidden, name: :original, value: project.summary }
           %textarea.form-control{ name: :summary, 'data-binder' => 'project-summary' }
-            :preserve
-              #{project.summary}
+            != preserve (is_conflicted ? conflicted_summary : project.summary)
         %button.btn.btn-default{ type: :submit } 編集する
     %h3 参加者
     %ul

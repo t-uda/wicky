@@ -7,28 +7,25 @@ module Wicky
 
     PREFIX = 'wicky-difftool'
     DIFF_OPTIONS = '--unified'
-    DIFF3_OPTIONS = '--merge'
+    DIFF3_OPTIONS = '--merge --show-overlap'
     PATCH_OPTIONS = '--unified --batch --quiet --posix --force'
 
     class MergeFailed < StandardError; end
     class Conflicted < StandardError; end
 
-    def patch_impl(source, forward, patches, &block)
-      option = forward ? '--forward' : '--reverse'
+    private
+    def self.patch_impl(source, forward, patches, &block)
+      direction = forward ? '--forward' : '--reverse'
       tmp = Tempfile.open(PREFIX)
       tmp.write source
       tmp.close
       patches.each do |patch_string|
-        reject_file = "#{tmp.path}.rej"
-        option += " --reject-file=#{reject_file}"
-        result, error, status = Open3.capture3 "patch #{option} #{PATCH_OPTIONS} #{tmp.path}", stdin_data: patch_string
+        result, error, status = Open3.capture3 "patch #{direction} #{PATCH_OPTIONS} #{tmp.path}", stdin_data: patch_string
         if not status.success? then
+          reject_file = "#{tmp.path}.rej"
           if File.exist?(reject_file) then
-            if block_given?
-              block.call File.read(reject_file)
-            else
-              raise Conflicted
-            end
+            block.call File.read(reject_file) if block_given?
+            raise Conflicted
           else
             raise MergeFailed
           end
@@ -80,9 +77,9 @@ module Wicky
         return merged_string
       else
         if block_given? then
-          merged_string.gsub!(/^<+\s*#{my_tmp.path}/, '<<<<<<< mine')
-          merged_string.gsub!(/^\|+\s*#{old_tmp.path}/, '||||||| original')
-          merged_string.gsub!(/^>+\s*#{your_tmp.path}/, '>>>>>>> others')
+          merged_string.gsub!(/^<+\s*#{my_tmp.path}/, '<<<<<<< HEAD')
+          merged_string.gsub!(/^=+\s*#{old_tmp.path}/, '=======')
+          merged_string.gsub!(/^>+\s*#{your_tmp.path}/, '>>>>>>> YOURS')
           block.call merged_string
         else
           raise Conflicted
