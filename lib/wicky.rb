@@ -6,6 +6,7 @@ require 'sinatra/activerecord'
 require 'sinatra/json'
 require 'sinatra/reloader'
 require 'sinatra/assetpack'
+require 'sinatra/param'
 require 'haml'
 require 'tilt/haml'
 require_relative '../models/user'
@@ -17,6 +18,7 @@ require_relative './haml/filters/kramdown'
 module Wicky
   class App < Sinatra::Base
 
+    helpers Sinatra::Param
     register Sinatra::AssetPack
 
     configure :development do
