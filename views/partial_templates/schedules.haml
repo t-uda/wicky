@@ -1,7 +1,6 @@
 -# coding: utf-8
--# template for partial rendering in [GET] /projects/:id/
 - schedules.each do |schedule|
   - binder_id = "schedule-#{schedule.id}"
   != bind binder_id, url("/schedules/#{schedule.id}/!show") do
-    != haml :a_schedule, locals: { schedule: schedule, is_conflicted: false }
+    != haml_partial :a_schedule, { schedule: schedule, is_conflicted: false }
 

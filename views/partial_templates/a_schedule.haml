@@ -26,6 +26,6 @@
         %div.alert-danger
           Conflicted!
       %textarea.form-control{ name: :description, 'data-binder' => "schedule-#{schedule.id}-description" }
-        != preserve (is_conflicted ? conflicted_description : schedule.description)
+        != preserve_newline (is_conflicted ? conflicted_description : schedule.description)
       %button.btn.btn-default{ type: :submit } 予定を編集する
 

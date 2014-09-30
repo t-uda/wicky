@@ -59,6 +59,22 @@ module Wicky
         end
       end
 
+      def haml_page(id, locals)
+        haml :"pages/#{id.to_s}", { layout: true }, locals
+      end
+
+      def haml_partial(id, locals)
+        haml :"partial_templates/#{id.to_s}", { layout: false }, locals
+      end
+
+      def preserve_newline(input = nil, &block)
+        return preserve_newline(capture_haml(&block)) if block
+        s = input.to_s
+        s.gsub!(/\n/, '&#x000A;')
+        s.delete!("\r")
+        s
+      end
+
       def merge_schedule_description!(schedule, your_original, your_description)
         my_description = schedule.description
         new_description = Wicky::DiffTool::merge3 my_description, your_original, your_description do |rej|
@@ -73,7 +89,7 @@ module Wicky
     end
 
     get '/' do
-      haml :index, locals: {
+      haml_page :index, {
         projects: Project.all,
         schedules: Schedule.all
       }
@@ -89,7 +105,7 @@ module Wicky
 
     get '/projects/:id/' do |id|
       halt 404 unless Project.exists?(id)
-      haml :a_project, locals: {
+      haml_page "projects/:id", {
         project: Project.find(id),
         is_conflicted: false
       }
@@ -97,12 +113,12 @@ module Wicky
 
     get '/projects/:id/schedules/!list' do |id|
       halt 404 unless Project.exists?(id)
-      haml :schedules, { layout: false }, { schedules: Project.find(id).schedules }
+      haml_partial :schedules, { schedules: Project.find(id).schedules }
     end
 
     get '/projects/:id/users/!list' do |id|
       halt 404 unless Project.exists?(id)
-      haml :users, { layout: false }, { users: Project.find(id).users }
+      haml_partial :users, { users: Project.find(id).users }
     end
 
     get '/projects/:id/!show' do |id|
@@ -114,7 +130,7 @@ module Wicky
         is_conflicted: params[:is_conflicted]
       }
       locals[:conflicted_summary] = params[:summary] if params[:is_conflicted]
-      haml :a_project, { layout: false }, locals
+      haml_partial :a_project, locals
     end
 
     get '/schedules/:id/!show' do |id|
@@ -126,7 +142,7 @@ module Wicky
         is_conflicted: params[:is_conflicted]
       }
       locals[:conflicted_description] = params[:description] if params[:is_conflicted]
-      haml :a_schedule, { layout: false }, locals
+      haml_partial :a_schedule, locals
     end
 
     get '/api/projects/:id.json' do |id|
@@ -221,7 +237,8 @@ module Wicky
         place: params[:place],
         start: time_for(params[:start]),
         end: time_for(params[:end]),
-        project_id: project_id
+        project_id: project_id,
+        description: ''
       }
       json Schedule.create(schedule_data).to_json
     end
