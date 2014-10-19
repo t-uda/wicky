@@ -77,9 +77,9 @@ module Wicky
         return merged_string
       else
         if block_given? then
-          merged_string.gsub!(/^<+\s*#{my_tmp.path}/, '<<<<<<< HEAD')
-          merged_string.gsub!(/^=+\s*#{old_tmp.path}/, '=======')
-          merged_string.gsub!(/^>+\s*#{your_tmp.path}/, '>>>>>>> YOURS')
+          merged_string.gsub!(/<{5,}\s*#{Regexp.escape(my_tmp.path)}/, "\n<<<<<<< HEAD")
+          merged_string.gsub!(/={5,}\s*#{Regexp.escape(old_tmp.path)}/, "\n=======")
+          merged_string.gsub!(/>{5,}\s*#{Regexp.escape(your_tmp.path)}/, "\n>>>>>>> YOURS")
           block.call merged_string
         else
           raise Conflicted
